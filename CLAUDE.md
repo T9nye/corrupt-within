@@ -34,6 +34,14 @@ to the task at hand. Don't read all of `docs/` every session.
   (client) predicts sprint speed and dash movement locally for
   responsiveness. Tuning numbers live in the new
   `src/shared/config/MovementConfig.lua`.
+- **Haven audit (2026-09-08):** two real bugs found and fixed in the place
+  file — `SpawnLocation` was embedded *inside* `PlazaSlab` (players spawned in
+  solid stone), and the entire south palisade only had geometry from Y=6 to
+  Y=9, leaving a 6-stud gap you could walk straight under along its whole
+  length. Added `PalisadeFoundation_West`/`_East` beneath the existing rail
+  rather than touching the 100 existing wall parts. **Still open:** the
+  crafting station from `haven-build.md`'s "What's in it" table was never
+  built — placement needs a decision, see the audit notes.
 - **Next:** Haven prop/detail pass (Toolbox clutter, retexturing) and a
   walk-through pass with sprint/dash live; then combat.
 - **Not started:** combat, corruption, loot, enemies, data persistence
