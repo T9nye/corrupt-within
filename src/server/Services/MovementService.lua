@@ -24,7 +24,11 @@ local function initPlayer(player)
 		wantsSprint = false, -- what the client says it wants
 		lastSprintClock = -math.huge, -- os.clock() of the last tick we were actually sprinting
 		dashCharges = MovementConfig.DashMaxCharges,
-		chargeRegenProgress = 0, -- seconds accumulated toward refunding one charge
+		-- One os.clock() expiry timestamp per charge currently regenerating.
+		-- Each entry is independent: spending a charge appends its own timer
+		-- rather than extending a shared one, so three charges spent together
+		-- come back together.
+		chargeTimers = {},
 		dashing = false, -- true for the whole commitment window, not just the movement burst
 		lastStaminaPush = 0,
 	}
@@ -84,6 +88,8 @@ function MovementService.Client:RequestDash(player)
 	end
 
 	data.dashCharges -= 1
+	-- This charge starts regenerating right now, on its own clock.
+	table.insert(data.chargeTimers, os.clock() + MovementConfig.DashChargeRegenTime)
 	player:SetAttribute("DashCharges", data.dashCharges)
 	data.dashing = true
 
@@ -141,16 +147,21 @@ function MovementService:KnitStart()
 				end
 			end
 
-			-- Refill one dash charge at a time, rather than all at once.
-			if data.dashCharges < MovementConfig.DashMaxCharges then
-				data.chargeRegenProgress += dt
-				if data.chargeRegenProgress >= MovementConfig.DashChargeRegenTime then
-					data.chargeRegenProgress = 0
-					data.dashCharges += 1
+			-- Retire any charge timers that have come due. Walking backwards so
+			-- removing an entry doesn't shuffle the ones we haven't checked.
+			if #data.chargeTimers > 0 then
+				local now = os.clock()
+				local refunded = 0
+				for i = #data.chargeTimers, 1, -1 do
+					if now >= data.chargeTimers[i] then
+						table.remove(data.chargeTimers, i)
+						refunded += 1
+					end
+				end
+				if refunded > 0 then
+					data.dashCharges = math.min(MovementConfig.DashMaxCharges, data.dashCharges + refunded)
 					player:SetAttribute("DashCharges", data.dashCharges)
 				end
-			else
-				data.chargeRegenProgress = 0
 			end
 
 			-- Republish stamina for the HUD, throttled.

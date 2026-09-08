@@ -4,6 +4,7 @@
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
 local Knit = require(ReplicatedStorage.Packages.Knit)
@@ -58,11 +59,22 @@ local function buildHUD()
 	fillCorner.CornerRadius = UDim.new(0, 4)
 	fillCorner.Parent = staminaFill
 
-	-- Dash charge pips, laid out in a row just under the stamina bar. One pip
-	-- per charge; DashMaxCharges is 1 today, so this renders a single pip.
+	-- Dash charge bars: one discrete bar per charge, laid out in a row under
+	-- the stamina bar. Each is its own little track+fill pair so a
+	-- regenerating charge can show partial progress rather than just blinking
+	-- from empty to full.
+	--
+	-- The row is the same total width as the stamina bar and divides itself
+	-- between however many charges the config declares, so raising
+	-- DashMaxCharges (the Endurance skill node in progression.md) needs no
+	-- layout changes here.
+	local maxCharges = MovementConfig.DashMaxCharges
+	local ROW_WIDTH, PIP_GAP = 260, 4
+	local pipWidth = (ROW_WIDTH - PIP_GAP * (maxCharges - 1)) / maxCharges
+
 	local pipRow = Instance.new("Frame")
 	pipRow.Name = "DashCharges"
-	pipRow.Size = UDim2.new(0, 260, 0, 8)
+	pipRow.Size = UDim2.new(0, ROW_WIDTH, 0, 8)
 	pipRow.Position = UDim2.new(0.5, 0, 1, -56)
 	pipRow.AnchorPoint = Vector2.new(0.5, 0)
 	pipRow.BackgroundTransparency = 1
@@ -71,22 +83,34 @@ local function buildHUD()
 	local layout = Instance.new("UIListLayout")
 	layout.FillDirection = Enum.FillDirection.Horizontal
 	layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-	layout.Padding = UDim.new(0, 4)
+	layout.Padding = UDim.new(0, PIP_GAP)
 	layout.Parent = pipRow
 
-	for i = 1, MovementConfig.DashMaxCharges do
-		local pip = Instance.new("Frame")
-		pip.Name = "Pip" .. i
-		pip.Size = UDim2.new(0, 30, 0, 6)
-		pip.BackgroundColor3 = PIP_FULL_COLOR
-		pip.BorderSizePixel = 0
-		pip.Parent = pipRow
+	for i = 1, maxCharges do
+		local track = Instance.new("Frame")
+		track.Name = "Pip" .. i
+		track.Size = UDim2.new(0, pipWidth, 1, 0)
+		track.BackgroundColor3 = PIP_EMPTY_COLOR
+		track.BorderSizePixel = 0
+		track.LayoutOrder = i
+		track.Parent = pipRow
 
-		local pipCorner = Instance.new("UICorner")
-		pipCorner.CornerRadius = UDim.new(0, 3)
-		pipCorner.Parent = pip
+		local trackCorner = Instance.new("UICorner")
+		trackCorner.CornerRadius = UDim.new(0, 3)
+		trackCorner.Parent = track
 
-		chargePips[i] = pip
+		local fill = Instance.new("Frame")
+		fill.Name = "Fill"
+		fill.Size = UDim2.fromScale(1, 1)
+		fill.BackgroundColor3 = PIP_FULL_COLOR
+		fill.BorderSizePixel = 0
+		fill.Parent = track
+
+		local fillCorner = Instance.new("UICorner")
+		fillCorner.CornerRadius = UDim.new(0, 3)
+		fillCorner.Parent = fill
+
+		chargePips[i] = fill
 	end
 end
 
@@ -110,21 +134,77 @@ local function updateStamina()
 	):Play()
 end
 
-local function updateCharges()
+-- Regeneration timers, predicted locally purely so the bars can animate.
+-- The server owns the authoritative charge *count*; this list only decides
+-- how full a partially-regenerated bar looks. Kept sorted ascending, so
+-- pendingTimers[1] is always the next charge to come back.
+local pendingTimers = {}
+local lastKnownCharges = MovementConfig.DashMaxCharges
+
+-- Called whenever the server publishes a new charge count. We diff against
+-- what we last saw to work out whether charges were spent or refunded.
+local function onChargesChanged()
 	local charges = localPlayer:GetAttribute("DashCharges") or MovementConfig.DashMaxCharges
-	for i, pip in ipairs(chargePips) do
-		pip.BackgroundColor3 = (i <= charges) and PIP_FULL_COLOR or PIP_EMPTY_COLOR
+	local delta = charges - lastKnownCharges
+
+	if delta < 0 then
+		-- Spent. Each spent charge begins its own regen window. Appending
+		-- keeps the list sorted, since a later spend always finishes later.
+		for _ = 1, -delta do
+			table.insert(pendingTimers, os.clock() + MovementConfig.DashChargeRegenTime)
+		end
+	elseif delta > 0 then
+		-- Refunded. Drop the timers that just matured, from the front.
+		for _ = 1, delta do
+			table.remove(pendingTimers, 1)
+		end
+	end
+
+	lastKnownCharges = charges
+end
+
+-- Runs every frame. Bars left of the current count are solid; the first
+-- empty bar shows the soonest-maturing timer, the next shows the one after
+-- that, and so on -- so the row always fills left to right.
+local function renderCharges()
+	local charges = lastKnownCharges
+	local regenTime = MovementConfig.DashChargeRegenTime
+	local now = os.clock()
+
+	for i, fill in ipairs(chargePips) do
+		if i <= charges then
+			fill.Size = UDim2.fromScale(1, 1)
+			fill.BackgroundTransparency = 0
+		else
+			local timer = pendingTimers[i - charges]
+			if timer then
+				local remaining = math.max(0, timer - now)
+				local progress = math.clamp(1 - (remaining / regenTime), 0, 1)
+				fill.Size = UDim2.fromScale(progress, 1)
+				-- Fade the partial fill slightly so a regenerating bar reads
+				-- as "not ready yet" at a glance, not as a short full bar.
+				fill.BackgroundTransparency = 0.35
+			else
+				fill.Size = UDim2.fromScale(0, 1)
+			end
+		end
 	end
 end
 
 function HUDController:KnitStart()
 	buildHUD()
 	updateStamina()
-	updateCharges()
+
+	lastKnownCharges = localPlayer:GetAttribute("DashCharges") or MovementConfig.DashMaxCharges
+	renderCharges()
 
 	localPlayer:GetAttributeChangedSignal("Stamina"):Connect(updateStamina)
 	localPlayer:GetAttributeChangedSignal("MaxStamina"):Connect(updateStamina)
-	localPlayer:GetAttributeChangedSignal("DashCharges"):Connect(updateCharges)
+	localPlayer:GetAttributeChangedSignal("DashCharges"):Connect(onChargesChanged)
+
+	-- The bars animate between attribute updates, so they need a per-frame
+	-- tick rather than only redrawing when the server tells us something.
+	RunService.RenderStepped:Connect(renderCharges)
 end
 
 return HUDController
