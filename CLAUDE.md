@@ -15,84 +15,80 @@ to the task at hand. Don't read all of `docs/` every session.
 
 ## Current state
 
-- **Phase:** 2 — Haven blockout is functionally complete; movement (sprint +
-  dash) is the first gameplay system, built and wired through Rojo.
-- **Done (Haven, in Studio):** plaza, finished blacksmith, black market, three
-  outer merchant shells, the plaza's general merchant stall, quest/party
-  boards, a shrine (on the plaza-to-blacksmith path, not hidden), three
-  residential shells (varied footprint + rotation), a training yard with
-  dummies, a well, the mine entrance, connective paths with lamp posts (gate,
-  blacksmith, west buildings, training yard), and mid-ring clutter (crates,
-  carts, barrels). Terrain pass done — muted ground/terrain palette, gentle
-  elevation at the gate approach. Lighting pass done — overcast Realistic,
-  low sun angle, Atmosphere haze, warm PointLights on every lamp and the
-  forge.
-- **Done (code):** Knit bootstrapped for the first time —
-  `src/server/init.server.lua` and `src/client/init.client.lua` exist and
-  call `Knit.Start()`. First system: `MovementService` (server) owns stamina
-  drain/regen and validates dash cooldowns/i-frames; `MovementController`
-  (client) predicts sprint speed and dash movement locally for
-  responsiveness. Tuning numbers live in the new
-  `src/shared/config/MovementConfig.lua`. Polished since: dash now runs on a
-  **charge** system (`DashMaxCharges` = 1 today; `progression.md` plans more
-  via the Endurance branch), the server republishes `Stamina`/`DashCharges`
-  as **Player attributes** (throttled to 10Hz) instead of per-frame remotes,
-  `HUDController` draws a stamina bar + charge pips from those attributes,
-  and sprinting eases the camera FOV 70 → 78.
-- **Haven audit (2026-09-08):** two real bugs found and fixed in the place
-  file — `SpawnLocation` was embedded *inside* `PlazaSlab` (players spawned in
-  solid stone), and the entire south palisade only had geometry from Y=6 to
-  Y=9, leaving a 6-stud gap you could walk straight under along its whole
-  length. Added `PalisadeFoundation_West`/`_East` beneath the existing rail
-  rather than touching the 100 existing wall parts. **Still open:** the
-  crafting station from `haven-build.md`'s "What's in it" table was never
-  built — placement needs a decision, see the audit notes.
-- **Done (Phase 3 — combat core, sword only):** `CombatService` owns all
-  damage. Client sends only "light" or "heavy" — no position, no target — and
-  the server builds the hitbox from its own copy of the character and uses
-  `workspace:GetPartBoundsInBox`, per `combat.md`. Light is the 3-hit chain
-  (10/10/14, 0.45s window, knockback on the final hit); Heavy has the 0.6s
-  windup, lunge, and is cancellable during windup **by dashing**.
-  `CombatController` binds LMB (light) and R (heavy). Combat and Movement
-  coordinate through **character attributes** (`Attacking`, `Dashing`,
-  `HeavyWindup`) rather than requiring each other, which keeps them free of
-  circular Knit dependencies. A tagged `TrainingDummy` stands in the training
-  yard at (75, -130); `TrainingDummyService` gives it a health bar and stands
-  it back up 3s after it drops. **No PvP by construction** — the hitbox skips
-  any Humanoid belonging to a Player.
-- **Done (Phase 4 groundwork — enemy framework, no Wilds):**
-  `src/server/Enemy/BaseEnemy.lua` is a Luau class handling patrol → aggro →
-  chase → attack → death → drop roll, with a grey-box body built in code.
-  `EnemyService` owns the registry and runs one shared AI tick loop
-  (~7Hz) rather than a coroutine per enemy, and exposes `OnEnemyDied` for
-  LootService/DataService to subscribe to later. All five enemies from
-  `enemies.md` are in `EnemyConfig` (HP/damage from the doc; speeds, ranges,
-  cooldowns, XP marked `(new)`). Enemy attacks honour the dash's
-  `Invulnerable` attribute — i-frames now actually do something. Brutes set
-  a `BlocksLight` attribute that `CombatService` checks, so Heavy is the only
-  answer to them. **One test Husk spawns in the training yard** — marked
-  TEMPORARY in `EnemyService`, delete it when the Wilds gets real spawners.
-- **Done (Phase 5 groundwork — data):** `DataService` wraps ProfileStore with
-  session locking. Profile template carries the seven fields
-  `progression.md` lists (level, xp, weaponLevels, corruptionMastery,
-  skillPoints, inventory, cosmetics) plus `currentRegion`. Saves on level up,
-  item gain and region change, every 60s, and on `BindToClose` — with a 7s
-  coalescing floor so a burst of pickups can't get us DataStore-throttled.
-  `ProgressionConfig` now holds the real XP curve and health formula. **In
-  Studio it uses `ProfileStore.Mock`**, so testing never touches live keys.
-  DataService subscribes to `EnemyService:OnEnemyDied` to award XP, which
-  closes the kill → XP → level-up loop. **No UI** — that's deliberate.
-- **Next:** Haven prop/detail pass and a walk-through pass; then the Wilds
-  proper, then corruption (Phase 6).
-- **Not started:** corruption, loot (the drop *roll* exists in BaseEnemy but
-  nothing turns a rarity into an actual item yet), weapon upgrading, any
-  data-driven UI.
-- **Toolchain set up.** Rokit, Rojo 7.7.0, and Wally 0.3.2 are installed and
-  `wally install` has been run — `Packages/`/`ServerPackages/` exist locally
-  (gitignored, regenerate with `wally install`). `wally.toml`/`wally.lock`
-  pin Knit 1.7.0 and ProfileStore 1.0.3. `src/shared/config` has
-  `WeaponConfig`/`CorruptionConfig`/`EnemyConfig`/`ProgressionConfig` still
-  stubbed (empty tables) and `MovementConfig` now populated.
+**Phase 5 groundwork.** Phases 1–3 are done; 4 and 5 have their reusable
+framework built but not their content. Last updated 2026-09-08.
+
+### The map (lives in the place file, not this repo)
+
+The Haven is fully blocked out: plaza, finished blacksmith, black market,
+three outer merchant shells, general merchant stall, quest/party boards, a
+shrine on the plaza→blacksmith path, three residential shells, training yard,
+well, mine entrance, connective paths with lamp posts, and mid-ring clutter.
+Terrain and lighting passes are done — muted palette, overcast Realistic
+lighting, low sun, Atmosphere haze, warm PointLights on lamps and the forge.
+
+### Code (all Rojo-synced, all verified running in a playtest)
+
+| System | Owns | Files |
+| --- | --- | --- |
+| Movement | Stamina, dash charges, i-frames | `MovementService`, `MovementController` |
+| HUD | Stamina bar, dash pips | `HUDController` |
+| Combat | All damage, hitboxes, combo state | `CombatService`, `CombatController` |
+| Enemies | Registry, AI tick loop, drops | `EnemyService`, `Enemy/BaseEnemy` |
+| Data | ProfileStore profiles, XP, levels | `DataService` |
+| Test target | Training dummy health/reset | `TrainingDummyService` |
+
+**Two architectural decisions worth not re-litigating:**
+
+1. **Services coordinate through character attributes**, not by requiring each
+   other — `Attacking`, `Dashing`, `HeavyWindup`, `Invulnerable`, `BlocksLight`.
+   This is what keeps Combat/Movement/Enemy free of the circular Knit
+   dependencies `architecture.md` warns about. Keep using this pattern.
+2. **The client predicts, the server rules.** Client sends "light"/"heavy" and
+   "I want to sprint" — never a position, target, damage figure or stamina
+   value. The server rebuilds everything from its own state.
+
+### Verified working (playtested 2026-09-08, not just compiled)
+
+- Knit starts clean on server and client.
+- Light chain deals exactly 10 / 10 / 14, heavy deals 28.
+- Rotbound Brute blocks light (0 damage) and takes heavy (28) — as `enemies.md` specifies.
+- Husk spawns, patrols, aggros.
+- Player spawns with `MaxHealth = 112` — proof `DataService` loaded a profile
+  and applied `progression.md`'s `100 + level*12`.
+- Stamina/DashCharges replicate to the client as Player attributes.
+
+### Stubbed or deliberately incomplete
+
+- `CorruptionConfig.lua` is still an empty table. Phase 6.
+- **Loot**: `BaseEnemy:RollDrop()` rolls a real rarity using
+  `progression.md`'s weights, but nothing converts a rarity into an item.
+  `LootService` doesn't exist.
+- **Corrupt Wisp's corruption-on-contact** is a marked `TODO(Phase 6)` hook.
+- **Sword abilities** (Riposte / Corrupt Slash / Severance) have numbers in
+  `WeaponConfig` but no implementation. Phase 6+.
+- **No enemy art** — grey-box boxes built in code.
+- **The Wilds does not exist.** One Husk spawns in the training yard from a
+  `TEST_SPAWNS` table in `EnemyService`, explicitly marked TEMPORARY. Delete
+  it when the Wilds gets real spawners — the Haven is meant to be no-combat.
+
+### Open questions needing Ye's decision
+
+- **Crafting station** is in `haven-build.md`'s "What's in it" table but was
+  never built. Needs a placement decision.
+- **`LayoutGuide`** blueprint decal is still on the ground and now shows
+  through in open areas. Remove, or keep as reference?
+- **All `(new)`-marked numbers** in `WeaponConfig`/`EnemyConfig` are invented,
+  not from docs — hitbox sizes, commitment windows, enemy speeds/ranges, XP
+  values. These want a playtest pass.
+
+### Toolchain
+
+Rokit, Rojo 7.7.0, Wally 0.3.2 installed; `wally install` has been run, so
+`Packages/`/`ServerPackages/` exist locally (gitignored — regenerate with
+`wally install`). `wally.toml`/`wally.lock` pin Knit 1.7.0 and ProfileStore
+1.0.3. Config modules: `MovementConfig`, `WeaponConfig`, `EnemyConfig`,
+`ProgressionConfig` are populated; `CorruptionConfig` is still an empty stub.
 
 Update this section when the phase changes. It is the only part of this file
 that goes stale.
