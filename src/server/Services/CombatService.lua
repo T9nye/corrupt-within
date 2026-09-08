@@ -60,7 +60,7 @@ end
 -- The actual hit detection. GetPartBoundsInBox asks the engine "which parts
 -- are inside this box right now" -- the approach docs/combat.md specifies,
 -- because unlike a camera raycast the client has no say in where the box is.
-local function applyHitbox(attackerCharacter, hitboxSize, forwardOffset, damage, knockback, knockbackDuration)
+local function applyHitbox(attackerCharacter, hitboxSize, forwardOffset, damage, knockback, knockbackDuration, isHeavy)
 	local rootPart = attackerCharacter:FindFirstChild("HumanoidRootPart")
 	if not rootPart then
 		return {}
@@ -87,7 +87,12 @@ local function applyHitbox(attackerCharacter, hitboxSize, forwardOffset, damage,
 			if humanoid and not hitHumanoids[humanoid] and not Players:GetPlayerFromCharacter(model) then
 				hitHumanoids[humanoid] = true
 
-				if humanoid.Health > 0 then
+				-- Rotbound Brutes block light attacks; only a Heavy gets
+				-- through (docs/enemies.md). EnemyService puts this attribute
+				-- on the model, so CombatService needs no knowledge of enemies.
+				local blocked = (not isHeavy) and model:GetAttribute("BlocksLight") == true
+
+				if humanoid.Health > 0 and not blocked then
 					humanoid:TakeDamage(damage)
 					table.insert(victims, humanoid)
 
@@ -172,7 +177,8 @@ function CombatService.Client:RequestLightAttack(player)
 		light.HitboxForwardOffset,
 		light.Damage[step],
 		isFinalHit and light.FinalHitKnockback or 0,
-		light.KnockbackDuration
+		light.KnockbackDuration,
+		false -- light: bounces off anything with BlocksLight
 	)
 
 	return { step = step, hits = #victims }
@@ -231,7 +237,8 @@ function CombatService.Client:RequestHeavyAttack(player)
 		heavy.HitboxForwardOffset,
 		heavy.Damage,
 		0,
-		0
+		0,
+		true -- heavy: breaks blocks
 	)
 
 	return { heavy = true, hits = #victims }

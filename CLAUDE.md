@@ -60,9 +60,21 @@ to the task at hand. Don't read all of `docs/` every session.
   yard at (75, -130); `TrainingDummyService` gives it a health bar and stands
   it back up 3s after it drops. **No PvP by construction** — the hitbox skips
   any Humanoid belonging to a Player.
-- **Next:** Haven prop/detail pass (Toolbox clutter, retexturing) and a
-  walk-through pass; enemies and the Wilds.
-- **Not started:** corruption, loot, enemies, data persistence
+- **Done (Phase 4 groundwork — enemy framework, no Wilds):**
+  `src/server/Enemy/BaseEnemy.lua` is a Luau class handling patrol → aggro →
+  chase → attack → death → drop roll, with a grey-box body built in code.
+  `EnemyService` owns the registry and runs one shared AI tick loop
+  (~7Hz) rather than a coroutine per enemy, and exposes `OnEnemyDied` for
+  LootService/DataService to subscribe to later. All five enemies from
+  `enemies.md` are in `EnemyConfig` (HP/damage from the doc; speeds, ranges,
+  cooldowns, XP marked `(new)`). Enemy attacks honour the dash's
+  `Invulnerable` attribute — i-frames now actually do something. Brutes set
+  a `BlocksLight` attribute that `CombatService` checks, so Heavy is the only
+  answer to them. **One test Husk spawns in the training yard** — marked
+  TEMPORARY in `EnemyService`, delete it when the Wilds gets real spawners.
+- **Next:** Haven prop/detail pass and a walk-through pass; then the Wilds
+  proper.
+- **Not started:** corruption, loot, data persistence
   (ProfileStore is installed but nothing uses it yet).
 - **Toolchain set up.** Rokit, Rojo 7.7.0, and Wally 0.3.2 are installed and
   `wally install` has been run — `Packages/`/`ServerPackages/` exist locally
