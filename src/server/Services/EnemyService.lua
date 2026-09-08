@@ -18,13 +18,18 @@ local liveEnemies = {}
 local deathListeners = {}
 local enemyFolder
 
--- TEMPORARY. Phase 4 proper builds the Wilds and spawns enemies there; this
--- single Husk exists so combat has something that fights back before that
+-- TEMPORARY. Phase 4 proper builds the Wilds and spawns enemies there; these
+-- two Husks exist so combat has something that fights back before that
 -- region is built. The Haven is meant to be a no-combat safe zone
--- (docs/game-overview.md), so this entry should be deleted once the Wilds
--- has its own spawners.
+-- (docs/game-overview.md), so these entries should be deleted once the
+-- Wilds has its own spawners. Husk is the only enemy actually spawned
+-- anywhere right now -- the other four in EnemyConfig are real, tuned data
+-- (BaseEnemy would run any of them the moment something calls Spawn() with
+-- their name), but nothing does yet, so in practice they have no live
+-- behaviour, matching "config entries with no behaviour" for now.
 local TEST_SPAWNS = {
-	{ enemy = "Husk", position = Vector3.new(75, 1, -118) }, -- training yard
+	{ enemy = "Husk", position = Vector3.new(75, 1, -118) }, -- training yard, west side
+	{ enemy = "Husk", position = Vector3.new(90, 1, -142) }, -- training yard, east side
 }
 
 -- Other services register here instead of EnemyService having to know about
