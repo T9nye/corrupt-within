@@ -72,10 +72,21 @@ to the task at hand. Don't read all of `docs/` every session.
   a `BlocksLight` attribute that `CombatService` checks, so Heavy is the only
   answer to them. **One test Husk spawns in the training yard** — marked
   TEMPORARY in `EnemyService`, delete it when the Wilds gets real spawners.
+- **Done (Phase 5 groundwork — data):** `DataService` wraps ProfileStore with
+  session locking. Profile template carries the seven fields
+  `progression.md` lists (level, xp, weaponLevels, corruptionMastery,
+  skillPoints, inventory, cosmetics) plus `currentRegion`. Saves on level up,
+  item gain and region change, every 60s, and on `BindToClose` — with a 7s
+  coalescing floor so a burst of pickups can't get us DataStore-throttled.
+  `ProgressionConfig` now holds the real XP curve and health formula. **In
+  Studio it uses `ProfileStore.Mock`**, so testing never touches live keys.
+  DataService subscribes to `EnemyService:OnEnemyDied` to award XP, which
+  closes the kill → XP → level-up loop. **No UI** — that's deliberate.
 - **Next:** Haven prop/detail pass and a walk-through pass; then the Wilds
-  proper.
-- **Not started:** corruption, loot, data persistence
-  (ProfileStore is installed but nothing uses it yet).
+  proper, then corruption (Phase 6).
+- **Not started:** corruption, loot (the drop *roll* exists in BaseEnemy but
+  nothing turns a rarity into an actual item yet), weapon upgrading, any
+  data-driven UI.
 - **Toolchain set up.** Rokit, Rojo 7.7.0, and Wally 0.3.2 are installed and
   `wally install` has been run — `Packages/`/`ServerPackages/` exist locally
   (gitignored, regenerate with `wally install`). `wally.toml`/`wally.lock`
