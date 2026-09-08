@@ -72,6 +72,13 @@ function MovementService.Client:RequestDash(player)
 		return false -- still inside the commitment window from the last dash
 	end
 
+	-- CombatService sets Attacking during an attack's commitment window.
+	-- Note it deliberately does NOT block on HeavyWindup: dashing during a
+	-- heavy's windup is how you cancel it (docs/combat.md).
+	if character:GetAttribute("Attacking") then
+		return false
+	end
+
 	if data.dashCharges < 1 then
 		return false -- no charges banked
 	end

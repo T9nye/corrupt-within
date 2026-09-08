@@ -47,9 +47,22 @@ to the task at hand. Don't read all of `docs/` every session.
   rather than touching the 100 existing wall parts. **Still open:** the
   crafting station from `haven-build.md`'s "What's in it" table was never
   built — placement needs a decision, see the audit notes.
+- **Done (Phase 3 — combat core, sword only):** `CombatService` owns all
+  damage. Client sends only "light" or "heavy" — no position, no target — and
+  the server builds the hitbox from its own copy of the character and uses
+  `workspace:GetPartBoundsInBox`, per `combat.md`. Light is the 3-hit chain
+  (10/10/14, 0.45s window, knockback on the final hit); Heavy has the 0.6s
+  windup, lunge, and is cancellable during windup **by dashing**.
+  `CombatController` binds LMB (light) and R (heavy). Combat and Movement
+  coordinate through **character attributes** (`Attacking`, `Dashing`,
+  `HeavyWindup`) rather than requiring each other, which keeps them free of
+  circular Knit dependencies. A tagged `TrainingDummy` stands in the training
+  yard at (75, -130); `TrainingDummyService` gives it a health bar and stands
+  it back up 3s after it drops. **No PvP by construction** — the hitbox skips
+  any Humanoid belonging to a Player.
 - **Next:** Haven prop/detail pass (Toolbox clutter, retexturing) and a
-  walk-through pass with sprint/dash live; then combat.
-- **Not started:** combat, corruption, loot, enemies, data persistence
+  walk-through pass; enemies and the Wilds.
+- **Not started:** corruption, loot, enemies, data persistence
   (ProfileStore is installed but nothing uses it yet).
 - **Toolchain set up.** Rokit, Rojo 7.7.0, and Wally 0.3.2 are installed and
   `wally install` has been run — `Packages/`/`ServerPackages/` exist locally
