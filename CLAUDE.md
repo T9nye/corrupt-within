@@ -20,9 +20,12 @@ to the task at hand. Don't read all of `docs/` every session.
   blacksmith finished, lighting switched to Realistic.
 - **Next:** remaining Haven buildings, then the terrain and detail pass.
 - **Not started:** any gameplay scripting. Phase 2 onward.
-- **No toolchain yet.** Phase 0 (Rojo, Wally, Knit, ProfileStore) was documented
-  but never set up. The game so far is a Studio place file and these docs. Don't
-  assume `rojo serve` works or that `src/` exists — check first.
+- **Toolchain set up.** Rokit, Rojo 7.7.0, and Wally 0.3.2 are installed.
+  `wally.toml`/`wally.lock` pin Knit 1.7.0 and ProfileStore 1.0.3.
+  `default.project.json` and `src/` exist, with the four `src/shared/config`
+  modules stubbed out (empty tables — no real tuning numbers yet). No
+  `init.server.lua`/`init.client.lua` or service/controller files yet — that's
+  gameplay scripting, still not started.
 
 Update this section when the phase changes. It is the only part of this file
 that goes stale.
@@ -40,7 +43,7 @@ that goes stale.
 | `docs/haven-build.md` | The Last Haven layout, scale, palette, lighting |
 | `docs/build-order.md` | The 8-phase plan from setup to playable MVP |
 
-## Toolchain (target — not installed yet)
+## Toolchain
 
 Rokit (toolchain manager) → Rojo 7 (file sync) → Wally (packages) →
 Knit (service framework) → ProfileStore (data persistence).

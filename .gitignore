@@ -1,0 +1,8 @@
+# Wally-installed packages — regenerated from wally.toml + wally.lock
+/Packages/
+/ServerPackages/
+
+# Rojo build/sourcemap artifacts
+*.rbxl
+*.rbxlx
+sourcemap.json
