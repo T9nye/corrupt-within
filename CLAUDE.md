@@ -27,6 +27,26 @@ well, mine entrance, connective paths with lamp posts, and mid-ring clutter.
 Terrain and lighting passes are done — muted palette, overcast Realistic
 lighting, low sun, Atmosphere haze, warm PointLights on lamps and the forge.
 
+**Interiors (2026-09-08).** Every building except the blacksmith now has one,
+parented as an `Interior` model inside each building so it can be revised or
+deleted wholesale. The shells were already hollow with working doorways, so
+nothing needed carving — each gained a ceiling, a hanging lantern with a warm
+PointLight, and furniture matched to its trade: black market (counter, purple
+vials, cleansing basin — the only purple in town), material trader (ore bins,
+timber, sacks), armorer (weapon rack, two armour stands), alchemist (cauldron,
+bottle shelves, herb bundles), and three houses (beds, tables, hearths,
+chests). The two 48×38 outer merchants were too cavernous for one room, so
+each is partitioned into shopfront plus back storage with its own internal
+doorway; **A is a provisioner and B a trade post — that identity was my
+choice, nothing in the docs assigns it.** Interior lights run
+`Shadows = false` deliberately: the lamp part otherwise casts a shadow
+straight down over the furniture beneath it.
+
+**Known drift:** `ResidentialShell_3` has been moved in the place file since
+it was built — it now sits at (−86, −55) with **rotation 0°**, not (−83, −115)
+at 10°. Its interior was built to the live position. RS1 and RS2 still carry
+their original off-axis rotation.
+
 ### Code (all Rojo-synced, all verified running in a playtest)
 
 | System | Owns | Files |
