@@ -2,6 +2,9 @@
   "name": "corrupt-within",
   "tree": {
     "$className": "DataModel",
+    "ReplicatedFirst": {
+      "$path": "src/replicated_first"
+    },
     "ServerScriptService": {
       "Server": {
         "$path": "src/server"

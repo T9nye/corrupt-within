@@ -11,11 +11,14 @@ local Workspace = game:GetService("Workspace")
 
 local Knit = require(ReplicatedStorage.Packages.Knit)
 local MovementConfig = require(ReplicatedStorage.Shared.config.MovementConfig)
+local InputConfig = require(ReplicatedStorage.Shared.config.InputConfig)
 
 local MovementController = Knit.CreateController { Name = "MovementController" }
 
-local SPRINT_KEY = Enum.KeyCode.LeftShift
-local DASH_KEY = Enum.KeyCode.Q
+-- Centralized in InputConfig so SettingsController's keybind display can
+-- never drift out of sync with what's actually bound.
+local SPRINT_KEY = InputConfig.Sprint
+local DASH_KEY = InputConfig.Dash
 
 local localPlayer = Players.LocalPlayer
 local isSprintKeyDown = false

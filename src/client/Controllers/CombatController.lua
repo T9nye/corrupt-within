@@ -9,6 +9,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Knit = require(ReplicatedStorage.Packages.Knit)
 local WeaponConfig = require(ReplicatedStorage.Shared.config.WeaponConfig)
+local InputConfig = require(ReplicatedStorage.Shared.config.InputConfig)
 
 local CombatController = Knit.CreateController { Name = "CombatController" }
 
@@ -16,7 +17,8 @@ local localPlayer = Players.LocalPlayer
 
 -- Heavy is on a key rather than MouseButton2 because right-click is also
 -- Roblox's camera-rotate drag -- binding an attack there makes both feel bad.
-local HEAVY_KEY = Enum.KeyCode.R
+-- Centralized in InputConfig, same reason as MovementController's keys.
+local HEAVY_KEY = InputConfig.HeavyAttack
 
 local CombatService
 

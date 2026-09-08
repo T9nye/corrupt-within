@@ -57,8 +57,12 @@ their original off-axis rotation.
 | Weapons | Building/equipping the held weapon | `WeaponService` |
 | Enemies | Registry, AI tick loop | `EnemyService`, `Enemy/BaseEnemy` |
 | Loot | Rarity rolls, item creation | `LootService` |
-| Data | ProfileStore profiles, XP, levels | `DataService` |
+| Data | ProfileStore profiles, XP, levels, settings, cosmetics | `DataService` |
 | Test target | Training dummy health/reset | `TrainingDummyService` |
+| Menu | Spawn gating (`CharacterAutoLoads=false`) | `MenuService` |
+| Loading/Menu UI | Loading screen, main menu, background camera | `MenuController` |
+| Customize | Avatar preview, body colour/outfit, saves to profile | `CustomizeController` |
+| Settings | Volume/sensitivity/FOV/quality/keybinds, reusable panel | `SettingsController` |
 
 **Two architectural decisions worth not re-litigating:**
 
@@ -111,6 +115,49 @@ their original off-axis rotation.
   `TEST_SPAWNS` table in `EnemyService`, explicitly marked TEMPORARY. Delete
   it when the Wilds gets real spawners — the Haven is meant to be no-combat.
 
+### Loading screen, main menu, Customize, Settings (2026-09-08)
+
+`Players.CharacterAutoLoads = false` (`MenuService`) — no character exists
+until PLAY is pressed, which is what makes "no control until they leave the
+menu" true by construction rather than something enforced after the fact.
+`ReplicatedFirst`'s one job is killing Roblox's default loading screen before
+it flashes; `MenuController` builds the real one, gated on BOTH real
+`ContentProvider:PreloadAsync` progress over the Haven AND a `ProfileLoaded`
+Player attribute from `DataService`. Customize uses
+`Players:CreateHumanoidModelFromUserId` to preview the real avatar with no
+character needed yet; Settings is one panel (`SettingsController:Open(onClose)`)
+callable from anywhere, ready for a future pause menu to reuse verbatim.
+
+**Six real bugs were found by actually playtesting this, not just reading the
+code back:**
+1. The menu's slow background camera orbit (a `RenderStepped` connection)
+   was never stopped when Customize took over the camera, so it fought
+   Customize's framing every frame. Needed an explicit `StopBackgroundCamera`.
+2. Customize's camera was on the wrong side of the preview rig — showed the
+   character's *back*. A Roblox character faces -Z by default; the camera
+   needs to be on the -Z side looking back, not +Z.
+3. `UserGameSettings.MouseSensitivity` **cannot be written by a normal game
+   script at all** ("lacking capability RobloxScript") — a hard platform
+   restriction, not a bug to work around. The slider still exists and
+   persists to the profile; it does not yet affect the live camera. Actually
+   doing that means replacing Roblox's default camera control scripts
+   entirely, which is real future work, not a quick fix.
+4. The FOV setting only wrote `camera.FieldOfView` while `CameraType` was
+   already `Custom` — which it never is during the menu (it's `Scriptable`).
+   The saved value silently never applied on spawn until this was fixed to
+   re-apply explicitly when PLAY restores `Custom`.
+5. `Player.CharacterAppearanceLoaded` **did not fire at all** in Play Solo
+   testing (confirmed by forcing a respawn and watching for it) — so an
+   appearance-loaded-only cosmetic apply silently never ran. Fixed by
+   applying on both `CharacterAdded` and `CharacterAppearanceLoaded`.
+6. Applying body colour "to every BasePart except Accessories" also
+   recoloured the welded sword, since `WeaponService` parents it directly
+   onto the character. Fixed with an explicit whitelist of real body part
+   names instead.
+
+None of these were guessed at — each was caught by clicking through the
+actual flow in a live playtest and checking real values afterward.
+
 ### Open questions needing Ye's decision
 
 - **Crafting station** is in `haven-build.md`'s "What's in it" table but was
@@ -120,6 +167,12 @@ their original off-axis rotation.
 - **All `(new)`-marked numbers** in `WeaponConfig`/`EnemyConfig` are invented,
   not from docs — hitbox sizes, commitment windows, enemy speeds/ranges, XP
   values. These want a playtest pass.
+- **Mouse sensitivity doesn't actually do anything live** (see bug #3 above)
+  — it persists to the profile but the slider is currently cosmetic. Real
+  fix requires overriding Roblox's default camera control scripts.
+- **Outfit "presets" are colour tints, not armour models** — no clothing
+  assets exist. Matches the project's grey-box rule but is the most visibly
+  unfinished-looking part of Customize.
 
 ### Toolchain
 
