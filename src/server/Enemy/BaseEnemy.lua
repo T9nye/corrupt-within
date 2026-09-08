@@ -276,24 +276,6 @@ function BaseEnemy:Update(allEnemies)
 	end
 end
 
--- Rolls a rarity using docs/progression.md's weights.
-function BaseEnemy:RollDrop()
-	local total = 0
-	for _, entry in ipairs(EnemyConfig.RarityWeights) do
-		total += entry.weight
-	end
-
-	local roll = math.random() * total
-	local running = 0
-	for _, entry in ipairs(EnemyConfig.RarityWeights) do
-		running += entry.weight
-		if roll <= running then
-			return entry.rarity
-		end
-	end
-	return EnemyConfig.RarityWeights[1].rarity
-end
-
 function BaseEnemy:OnDied()
 	if not self.alive then
 		return
@@ -301,16 +283,17 @@ function BaseEnemy:OnDied()
 	self.alive = false
 	self.state = STATE.Dead
 
+	-- No rarity roll here on purpose -- that's LootService's job, not this
+	-- module's. BaseEnemy just reports the facts of the kill: who, what, and
+	-- where. EnemyService fans this out to whoever subscribed via
+	-- OnEnemyDied; LootService and DataService are the two current listeners.
 	local drop = {
 		enemyName = self.enemyName,
 		xp = self.config.XP,
-		rarity = self:RollDrop(),
 		position = self.root.Position,
 		killedBy = self.target,
 	}
 
-	-- EnemyService listens for this and re-broadcasts it. LootService and the
-	-- XP half of DataService are the eventual consumers (Phase 5).
 	if self.onDeath then
 		self.onDeath(self, drop)
 	end

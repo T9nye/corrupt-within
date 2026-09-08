@@ -4,19 +4,12 @@
 -- Health and Damage come straight from docs/enemies.md's table. Everything
 -- else — speeds, ranges, cooldowns, patrol behaviour, XP, drop weights — is
 -- marked (new) and is a first-pass guess with no doc behind it.
-
-local RARITY_WEIGHTS = {
-	-- From docs/progression.md's equipment rarity table.
-	{ rarity = "Common", weight = 60 },
-	{ rarity = "Uncommon", weight = 25 },
-	{ rarity = "Rare", weight = 11 },
-	{ rarity = "Epic", weight = 3.5 },
-	{ rarity = "Corrupted", weight = 0.5 },
-}
+--
+-- Loot rarity weights used to live here, but rolling a rarity is a loot
+-- decision, not an enemy one -- they've moved to
+-- ProgressionConfig.EquipmentRarity, and LootService is what rolls them now.
 
 return {
-	RarityWeights = RARITY_WEIGHTS,
-
 	-- Not an enemy — the stationary Phase 3 test target in the Haven's
 	-- training yard (docs/build-order.md, Phase 3).
 	TrainingDummy = {

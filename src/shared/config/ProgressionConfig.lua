@@ -38,6 +38,29 @@ local ProgressionConfig = {
 		-- hammer the DataStore. Requests inside the window are coalesced.
 		MinInterval = 7,
 	},
+
+	-- Equipment rarity table, straight from progression.md's "Equipment
+	-- rarity" section. DropWeight is the % chance out of 100; StatMultiplier
+	-- is "+10%" etc expressed as a multiplier on baseline (1.0 = baseline).
+	-- HasAffix and PassiveCorruptionPerSecond are the doc's "one bonus affix"
+	-- and "passive corruption gain while equipped" notes for Epic/Corrupted.
+	-- LootService is the only thing that reads this table -- it's kept here,
+	-- not in LootService itself, because loot rarity is progression.md's
+	-- domain (see the Docs map in CLAUDE.md), the same reason XP and levels
+	-- live in this file rather than in DataService.
+	EquipmentRarity = {
+		{ rarity = "Common", dropWeight = 60, statMultiplier = 1.00, hasAffix = false, passiveCorruptionPerSecond = 0 },
+		{ rarity = "Uncommon", dropWeight = 25, statMultiplier = 1.10, hasAffix = false, passiveCorruptionPerSecond = 0 },
+		{ rarity = "Rare", dropWeight = 11, statMultiplier = 1.25, hasAffix = false, passiveCorruptionPerSecond = 0 },
+		{ rarity = "Epic", dropWeight = 3.5, statMultiplier = 1.45, hasAffix = true, passiveCorruptionPerSecond = 0 },
+		-- "Corrupted rarity is the best gear in the game and it actively
+		-- works against you." -- the passive gain is what makes that true.
+		-- The RATE (0.1/sec) is invented -- progression.md says the gear has
+		-- one, corruption.md never lists an equipment-based rate. Flagging
+		-- this one specifically since it's a real gameplay number, not just
+		-- a hitbox size: worth a look before anyone actually equips one.
+		{ rarity = "Corrupted", dropWeight = 0.5, statMultiplier = 1.70, hasAffix = true, passiveCorruptionPerSecond = 0.1 },
+	},
 }
 
 return ProgressionConfig

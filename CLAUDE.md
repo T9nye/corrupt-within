@@ -55,7 +55,8 @@ their original off-axis rotation.
 | HUD | Stamina bar, dash pips | `HUDController` |
 | Combat | All damage, hitboxes, combo state | `CombatService`, `CombatController` |
 | Weapons | Building/equipping the held weapon | `WeaponService` |
-| Enemies | Registry, AI tick loop, drops | `EnemyService`, `Enemy/BaseEnemy` |
+| Enemies | Registry, AI tick loop | `EnemyService`, `Enemy/BaseEnemy` |
+| Loot | Rarity rolls, item creation | `LootService` |
 | Data | ProfileStore profiles, XP, levels | `DataService` |
 | Test target | Training dummy health/reset | `TrainingDummyService` |
 
@@ -82,9 +83,18 @@ their original off-axis rotation.
 ### Stubbed or deliberately incomplete
 
 - `CorruptionConfig.lua` is still an empty table. Phase 6.
-- **Loot**: `BaseEnemy:RollDrop()` rolls a real rarity using
-  `progression.md`'s weights, but nothing converts a rarity into an item.
-  `LootService` doesn't exist.
+- **Loot is wired end to end (2026-09-08).** `LootService` subscribes to
+  `EnemyService:OnEnemyDied`, rolls a rarity against
+  `ProgressionConfig.EquipmentRarity` (moved there from `EnemyConfig` — rarity
+  is a loot/progression concept, not an enemy one), and hands `DataService` a
+  real item. Verified with a 10,000-roll statistical check (weights held) and
+  a live kill (Husk → item appeared in inventory, XP awarded). **There is no
+  itemization system** — items are `{id, source, rarity, statMultiplier,
+  hasAffix, passiveCorruptionPerSecond}`, deliberately the simplest thing that
+  can hold a rarity. No names, no equip slots, no weapon types. That's the
+  next real gap, not a missing feature of LootService itself.
+  `passiveCorruptionPerSecond = 0.1` for Corrupted gear is an invented rate —
+  no doc specifies one.
 - **Corrupt Wisp's corruption-on-contact** is a marked `TODO(Phase 6)` hook.
 - **Sword abilities** (Riposte / Corrupt Slash / Severance) have numbers in
   `WeaponConfig` but no implementation. Phase 6+.
