@@ -15,17 +15,35 @@ to the task at hand. Don't read all of `docs/` every session.
 
 ## Current state
 
-- **Phase:** 1 — building The Last Haven (the hub town) in Studio.
-- **Done:** layout guide placed, plaza slab, building blocks blocked out,
-  blacksmith finished, lighting switched to Realistic.
-- **Next:** remaining Haven buildings, then the terrain and detail pass.
-- **Not started:** any gameplay scripting. Phase 2 onward.
-- **Toolchain set up.** Rokit, Rojo 7.7.0, and Wally 0.3.2 are installed.
-  `wally.toml`/`wally.lock` pin Knit 1.7.0 and ProfileStore 1.0.3.
-  `default.project.json` and `src/` exist, with the four `src/shared/config`
-  modules stubbed out (empty tables — no real tuning numbers yet). No
-  `init.server.lua`/`init.client.lua` or service/controller files yet — that's
-  gameplay scripting, still not started.
+- **Phase:** 2 — Haven blockout is functionally complete; movement (sprint +
+  dash) is the first gameplay system, built and wired through Rojo.
+- **Done (Haven, in Studio):** plaza, finished blacksmith, black market, three
+  outer merchant shells, the plaza's general merchant stall, quest/party
+  boards, a shrine (on the plaza-to-blacksmith path, not hidden), three
+  residential shells (varied footprint + rotation), a training yard with
+  dummies, a well, the mine entrance, connective paths with lamp posts (gate,
+  blacksmith, west buildings, training yard), and mid-ring clutter (crates,
+  carts, barrels). Terrain pass done — muted ground/terrain palette, gentle
+  elevation at the gate approach. Lighting pass done — overcast Realistic,
+  low sun angle, Atmosphere haze, warm PointLights on every lamp and the
+  forge.
+- **Done (code):** Knit bootstrapped for the first time —
+  `src/server/init.server.lua` and `src/client/init.client.lua` exist and
+  call `Knit.Start()`. First system: `MovementService` (server) owns stamina
+  drain/regen and validates dash cooldowns/i-frames; `MovementController`
+  (client) predicts sprint speed and dash movement locally for
+  responsiveness. Tuning numbers live in the new
+  `src/shared/config/MovementConfig.lua`.
+- **Next:** Haven prop/detail pass (Toolbox clutter, retexturing) and a
+  walk-through pass with sprint/dash live; then combat.
+- **Not started:** combat, corruption, loot, enemies, data persistence
+  (ProfileStore is installed but nothing uses it yet).
+- **Toolchain set up.** Rokit, Rojo 7.7.0, and Wally 0.3.2 are installed and
+  `wally install` has been run — `Packages/`/`ServerPackages/` exist locally
+  (gitignored, regenerate with `wally install`). `wally.toml`/`wally.lock`
+  pin Knit 1.7.0 and ProfileStore 1.0.3. `src/shared/config` has
+  `WeaponConfig`/`CorruptionConfig`/`EnemyConfig`/`ProgressionConfig` still
+  stubbed (empty tables) and `MovementConfig` now populated.
 
 Update this section when the phase changes. It is the only part of this file
 that goes stale.
