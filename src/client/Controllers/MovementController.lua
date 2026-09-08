@@ -6,6 +6,8 @@
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
+local Workspace = game:GetService("Workspace")
 
 local Knit = require(ReplicatedStorage.Packages.Knit)
 local MovementConfig = require(ReplicatedStorage.Shared.config.MovementConfig)
@@ -18,7 +20,8 @@ local DASH_KEY = Enum.KeyCode.Q
 local localPlayer = Players.LocalPlayer
 local isSprintKeyDown = false
 local isDashing = false -- local prediction of the commitment window
-local lastLocalDashClock = -math.huge
+local predictedCharges = MovementConfig.DashMaxCharges -- resynced from the server below
+local activeFOVTween = nil
 
 local MovementService -- fetched in KnitStart, once Knit is fully booted
 
@@ -40,12 +43,38 @@ end
 -- we're wrong (say, stamina actually hit 0 a moment ago) it self-corrects
 -- within one network round trip -- you'll feel a brief speed change instead
 -- of the game silently lying about your stamina.
+-- Eases the camera's field of view. A slightly wider FOV while sprinting is
+-- a cheap, very effective speed cue -- the world appears to rush past faster
+-- without the character actually moving faster.
+local function setFOV(target)
+	local camera = Workspace.CurrentCamera
+	if not camera then
+		return
+	end
+	if activeFOVTween then
+		activeFOVTween:Cancel()
+	end
+	activeFOVTween = TweenService:Create(
+		camera,
+		TweenInfo.new(MovementConfig.FOVTweenTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+		{ FieldOfView = target }
+	)
+	activeFOVTween:Play()
+end
+
 local function updateSprintPrediction()
 	local _, humanoid = getCharacterParts()
 	if not humanoid then
 		return
 	end
-	humanoid.WalkSpeed = isSprintKeyDown and MovementConfig.SprintSpeed or MovementConfig.WalkSpeed
+
+	-- Stamina comes from a Player attribute the server republishes; if we're
+	-- empty, don't predict a sprint we can't actually have.
+	local stamina = localPlayer:GetAttribute("Stamina") or MovementConfig.MaxStamina
+	local sprinting = isSprintKeyDown and stamina > 0
+
+	humanoid.WalkSpeed = sprinting and MovementConfig.SprintSpeed or MovementConfig.WalkSpeed
+	setFOV(sprinting and MovementConfig.SprintFOV or MovementConfig.DefaultFOV)
 end
 
 local function tryDash()
@@ -53,9 +82,8 @@ local function tryDash()
 		return
 	end
 
-	local now = os.clock()
-	if now - lastLocalDashClock < MovementConfig.DashCooldown then
-		return -- our own predicted cooldown -- keeps an honest client from spamming the key
+	if predictedCharges < 1 then
+		return -- our own predicted charge count -- keeps an honest client from spamming the key
 	end
 
 	local character, humanoid, rootPart = getCharacterParts()
@@ -63,7 +91,7 @@ local function tryDash()
 		return
 	end
 
-	lastLocalDashClock = now
+	predictedCharges -= 1
 	isDashing = true
 	task.delay(MovementConfig.DashCommitDuration, function()
 		isDashing = false
@@ -106,6 +134,21 @@ end
 
 function MovementController:KnitStart()
 	MovementService = Knit.GetService("MovementService")
+
+	-- The server is the source of truth for charges. Whenever it publishes a
+	-- new count, snap our prediction back to it -- that's the "reconcile"
+	-- half of predict-and-reconcile.
+	localPlayer:GetAttributeChangedSignal("DashCharges"):Connect(function()
+		predictedCharges = localPlayer:GetAttribute("DashCharges") or 0
+	end)
+
+	-- If stamina runs dry mid-sprint, drop out of the sprint FOV immediately
+	-- rather than waiting for the next key event.
+	localPlayer:GetAttributeChangedSignal("Stamina"):Connect(function()
+		if isSprintKeyDown then
+			updateSprintPrediction()
+		end
+	end)
 
 	UserInputService.InputBegan:Connect(function(input, gameProcessedEvent)
 		if gameProcessedEvent then

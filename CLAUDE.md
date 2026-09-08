@@ -33,7 +33,12 @@ to the task at hand. Don't read all of `docs/` every session.
   drain/regen and validates dash cooldowns/i-frames; `MovementController`
   (client) predicts sprint speed and dash movement locally for
   responsiveness. Tuning numbers live in the new
-  `src/shared/config/MovementConfig.lua`.
+  `src/shared/config/MovementConfig.lua`. Polished since: dash now runs on a
+  **charge** system (`DashMaxCharges` = 1 today; `progression.md` plans more
+  via the Endurance branch), the server republishes `Stamina`/`DashCharges`
+  as **Player attributes** (throttled to 10Hz) instead of per-frame remotes,
+  `HUDController` draws a stamina bar + charge pips from those attributes,
+  and sprinting eases the camera FOV 70 → 78.
 - **Haven audit (2026-09-08):** two real bugs found and fixed in the place
   file — `SpawnLocation` was embedded *inside* `PlazaSlab` (players spawned in
   solid stone), and the entire south palisade only had geometry from Y=6 to

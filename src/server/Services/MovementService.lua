@@ -23,9 +23,17 @@ local function initPlayer(player)
 		stamina = MovementConfig.MaxStamina,
 		wantsSprint = false, -- what the client says it wants
 		lastSprintClock = -math.huge, -- os.clock() of the last tick we were actually sprinting
-		lastDashClock = -math.huge,
+		dashCharges = MovementConfig.DashMaxCharges,
+		chargeRegenProgress = 0, -- seconds accumulated toward refunding one charge
 		dashing = false, -- true for the whole commitment window, not just the movement burst
+		lastStaminaPush = 0,
 	}
+	-- Attributes on the Player replicate to every client automatically, so the
+	-- HUD can just read them instead of us wiring up a RemoteEvent per value.
+	player:SetAttribute("Stamina", MovementConfig.MaxStamina)
+	player:SetAttribute("MaxStamina", MovementConfig.MaxStamina)
+	player:SetAttribute("DashCharges", MovementConfig.DashMaxCharges)
+	player:SetAttribute("MaxDashCharges", MovementConfig.DashMaxCharges)
 end
 
 local function cleanupPlayer(player)
@@ -46,8 +54,8 @@ function MovementService.Client:SetSprintInput(player, wantsSprint)
 end
 
 -- Client-callable: the client asks permission to dash. Returns true if
--- granted. This is the only place cooldowns are checked -- the client also
--- keeps its own local cooldown timer for responsiveness, but that copy is
+-- granted. This is the only place charges are checked -- the client also
+-- tracks a predicted charge count for responsiveness, but that copy is
 -- just for feel and is never trusted.
 function MovementService.Client:RequestDash(player)
 	local data = state[player]
@@ -64,12 +72,12 @@ function MovementService.Client:RequestDash(player)
 		return false -- still inside the commitment window from the last dash
 	end
 
-	local now = os.clock()
-	if now - data.lastDashClock < MovementConfig.DashCooldown then
-		return false -- too soon
+	if data.dashCharges < 1 then
+		return false -- no charges banked
 	end
 
-	data.lastDashClock = now
+	data.dashCharges -= 1
+	player:SetAttribute("DashCharges", data.dashCharges)
 	data.dashing = true
 
 	-- These attributes are what future systems (combat, animation) will read.
@@ -124,6 +132,24 @@ function MovementService:KnitStart()
 				if os.clock() - data.lastSprintClock >= MovementConfig.StaminaRegenDelay then
 					data.stamina = math.min(MovementConfig.MaxStamina, data.stamina + MovementConfig.StaminaRegenPerSecond * dt)
 				end
+			end
+
+			-- Refill one dash charge at a time, rather than all at once.
+			if data.dashCharges < MovementConfig.DashMaxCharges then
+				data.chargeRegenProgress += dt
+				if data.chargeRegenProgress >= MovementConfig.DashChargeRegenTime then
+					data.chargeRegenProgress = 0
+					data.dashCharges += 1
+					player:SetAttribute("DashCharges", data.dashCharges)
+				end
+			else
+				data.chargeRegenProgress = 0
+			end
+
+			-- Republish stamina for the HUD, throttled.
+			if os.clock() - data.lastStaminaPush >= MovementConfig.StaminaPushInterval then
+				data.lastStaminaPush = os.clock()
+				player:SetAttribute("Stamina", data.stamina)
 			end
 		end
 	end)
