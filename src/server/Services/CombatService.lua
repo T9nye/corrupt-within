@@ -47,6 +47,18 @@ local function isBusy(player, data)
 	return false
 end
 
+-- What is this character actually holding? WeaponService stamps this onto the
+-- character when it welds a weapon into their hand. Returning nil here means
+-- "unarmed", and every attack path below refuses on nil -- so combat can't be
+-- performed by someone with no weapon, which used to be possible.
+local function getWeapon(character)
+	local weaponName = character:GetAttribute("EquippedWeapon")
+	if not weaponName then
+		return nil
+	end
+	return WeaponConfig[weaponName], weaponName
+end
+
 local function setCommitment(character, data, duration)
 	data.busyUntil = os.clock() + duration
 	character:SetAttribute("Attacking", true)
@@ -155,7 +167,12 @@ function CombatService.Client:RequestLightAttack(player)
 		return nil
 	end
 
-	local light = WeaponConfig.Sword.Light
+	local weapon = getWeapon(character)
+	if not weapon then
+		return nil -- unarmed
+	end
+
+	local light = weapon.Light
 	local now = os.clock()
 
 	-- Advance the chain, or restart it if the window lapsed.
@@ -202,7 +219,12 @@ function CombatService.Client:RequestHeavyAttack(player)
 		return nil
 	end
 
-	local heavy = WeaponConfig.Sword.Heavy
+	local weapon = getWeapon(character)
+	if not weapon then
+		return nil -- unarmed
+	end
+
+	local heavy = weapon.Heavy
 	local now = os.clock()
 	if now - data.lastHeavyClock < heavy.Cooldown then
 		return nil

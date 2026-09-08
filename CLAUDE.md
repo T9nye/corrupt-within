@@ -54,6 +54,7 @@ their original off-axis rotation.
 | Movement | Stamina, dash charges, i-frames | `MovementService`, `MovementController` |
 | HUD | Stamina bar, dash pips | `HUDController` |
 | Combat | All damage, hitboxes, combo state | `CombatService`, `CombatController` |
+| Weapons | Building/equipping the held weapon | `WeaponService` |
 | Enemies | Registry, AI tick loop, drops | `EnemyService`, `Enemy/BaseEnemy` |
 | Data | ProfileStore profiles, XP, levels | `DataService` |
 | Test target | Training dummy health/reset | `TrainingDummyService` |
@@ -88,6 +89,14 @@ their original off-axis rotation.
 - **Sword abilities** (Riposte / Corrupt Slash / Severance) have numbers in
   `WeaponConfig` but no implementation. Phase 6+.
 - **No enemy art** — grey-box boxes built in code.
+- **The sword is a placeholder.** `WeaponService` welds a five-part grey-box
+  blade to the right hand on every spawn and stamps `EquippedWeapon` on the
+  character; `CombatService` reads that attribute for its stat block and now
+  refuses attacks from anyone unarmed. It is welded rather than a Roblox
+  `Tool` on purpose — a Tool would sit in the backpack needing a hotbar press,
+  and attack input already runs through `CombatController`, not
+  `Tool.Activated`. There are still **no attack animations**, so swings do
+  damage with no visual tell.
 - **The Wilds does not exist.** One Husk spawns in the training yard from a
   `TEST_SPAWNS` table in `EnemyService`, explicitly marked TEMPORARY. Delete
   it when the Wilds gets real spawners — the Haven is meant to be no-combat.
